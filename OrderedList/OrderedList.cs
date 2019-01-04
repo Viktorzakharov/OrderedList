@@ -1,97 +1,122 @@
 ﻿using System;
+using System.Collections.Generic;
 
-namespace OrderedList
+namespace AlgorithmsDataStructures
 {
-    public class OrderList
+    public class Node<T>
     {
-        public Node head;
-        public Node tail;
-        public int length;
-        public bool increase;
+        public T value;
+        public Node<T> next, prev;
 
-        public OrderList(bool item)
+        public Node(T _value)
+        {
+            value = _value;
+            next = null;
+            prev = null;
+        }
+    }
+
+    public class OrderedList<T>
+    {
+        public Node<T> head, tail;
+        public bool _ascending;
+
+        public OrderedList(bool asc)
         {
             head = null;
             tail = null;
-            length = 0;
-            increase = item;
+            _ascending = asc;
         }
 
-        public void AddNode(object value)
+        public int Compare(T v1, T v2)
         {
-            if (PreviouslyCheck(value, increase)) return;
-            var virtNode = GetVirtNode(increase);
-
-            while (true)
-            {
-                if (BiggerElement(value, virtNode.value))
-                {
-                    if (increase) AddNodeAfterNode(new Node(value), virtNode);
-                    else AddNodeAfterNode(new Node(value), virtNode.next);
-                    break;
-                }
-                else
-                {
-                    if (increase) virtNode = virtNode.prev;
-                    else
-                    {
-                        Node hNode = new Node(virtNode.prev.value);
-                        hNode.next = virtNode.next.next;
-                        hNode.prev = virtNode.prev.next;
-                        virtNode = hNode;
-                    }
-                }
-            }
+            int result = 0;
+            if (typeof(T) == typeof(string)) result = string.Compare(v1.ToString().Trim(), v2.ToString().Trim());
+            else if (Convert.ToDouble(v1) < Convert.ToDouble(v2)) result = -1;
+            else if (Convert.ToDouble(v1) == Convert.ToDouble(v2)) result = 0;
+            else result = 1;
+            return result;
         }
 
-        public Node Find(object value)
+        public void Add(T value)
         {
-            if (increase && (BiggerElement(head.value,value) || BiggerElement(value, tail.value)))
-                return null;
-            else if (!increase && (BiggerElement(value, head.value) || BiggerElement(tail.value,value)))
-                return null;
+            if (PreAdd(value, _ascending)) return;
+            if (_ascending) InsertAfter(new Node<T>(value), GetAfterNodeAscending(value));
+            else InsertAfter(new Node<T>(value), GetAfterNodeNotAscending(value));
+        }
+
+        public Node<T> Find(T val)
+        {
+            if (head == null) return null;
+            if (_ascending && (Compare(val, head.value) == -1 || Compare(val, tail.value) == 1)) return null;
+            if (!_ascending && (Compare(val, head.value) == 1 || Compare(val, tail.value) == -1)) return null;
 
             var node = head;
             while (node != null)
             {
-                if (Equals(node.value, value)) return node;
+                if (val.Equals(node.value)) return node;
                 node = node.next;
             }
             return null;
         }
 
-        public void DeleteOnceItem(object value)
+        public void Delete(T val)
         {
-            var node = Find(value);
-            if (node != null)
+            var node = Find(val);
+            if (node == null) return;
+            if (node.Equals(head))
             {
-                if (node == head)
-                {
-                    node.next.prev = null;
-                    head = node.next;
-                }
-                else if (node == tail)
-                {
-                    node.prev.next = null;
-                    tail = node.prev;
-                }
+                if (head.Equals(tail)) Clear(_ascending);
                 else
                 {
-                    node.prev.next = node.next;
-                    node.next.prev = node.prev;
+                    head = head.next;
+                    head.prev = null;
                 }
-                length--;
             }
-            else Console.WriteLine("Элемента с заданным значением нет в списке!");
+            else if (node.Equals(tail))
+            {
+                node.prev.next = null;
+                tail = node.prev;
+            }
+            else
+            {
+                node.prev.next = node.next;
+                node.next.prev = node.prev;
+            }
         }
 
-        public virtual bool BiggerElement(object a, object b)
+        public void Clear(bool asc)
         {
-            if ((int)a > (int)b) return true;
-            else return false;
+            head = null;
+            tail = null;
+            _ascending = asc;
         }
 
-        private void AddInHead(Node node)
+        public int Count()
+        {
+            var count = 0;
+            var node = head;
+            while (node != null)
+            {
+                count++;
+                node = node.next;
+            }
+            return count;
+        }
+
+        public List<Node<T>> GetAll()
+        {
+            var r = new List<Node<T>>();
+            var node = head;
+            while (node != null)
+            {
+                r.Add(node);
+                node = node.next;
+            }
+            return r;
+        }
+
+        private void AddInHead(Node<T> node)
         {
             if (head != null)
             {
@@ -99,71 +124,66 @@ namespace OrderedList
                 node.next = head;
                 head.prev = node;
                 head = node;
-                length++;
             }
             else AddInTail(node);
         }
 
-        private void AddInTail(Node node)
+        private void AddInTail(Node<T> node)
         {
-            if (head != null)
-            {
-                node.prev = tail;
-                tail.next = node;
-                tail = node;
-            }
-            else
-            {
-                head = node;
-                tail = node;
-            }
-            length++;
-        }
-
-        private void AddNodeAfterNode(Node node, Node nodeAfter)
-        {
-            node.next = nodeAfter.next;
-            node.prev = nodeAfter;
-            nodeAfter.next.prev = node;
-            nodeAfter.next = node;
-            length++;
-        }
-
-        private bool PreviouslyCheck(object value, bool increase)
-        {
-            var node = new Node(value);
-
             if (head == null)
             {
-                AddInTail(node);
-                return true;
+                head = node;
+                node.next = null;
+                node.prev = null;
             }
-
-            if ((!BiggerElement(value, head.value) && increase) ||
-                (BiggerElement(value, head.value) && !increase))
-            {
-                AddInHead(node);
-                return true;
-            }
-            else if ((BiggerElement(value, tail.value) && increase) ||
-                (!BiggerElement(value, tail.value) && !increase))
-            {
-                AddInTail(node);
-                return true;
-            }
-            return false;
-        }
-
-        private Node GetVirtNode(bool increase)
-        {
-            if (increase) return tail.prev;
             else
             {
-                var node = new Node(head.next.value);
-                node.next = head;
-                node.prev = head.next.next;
-                return node;
+                tail.next = node;
+                node.prev = tail;
+                node.next = null;
             }
+            tail = node;
+        }
+
+        private void InsertAfter(Node<T> nodeToInsert, Node<T> nodeAfter)
+        {
+            if (nodeAfter == null) return;
+            nodeToInsert.next = nodeAfter.next;
+            nodeToInsert.prev = nodeAfter;
+            nodeAfter.next.prev = nodeToInsert;
+            nodeAfter.next = nodeToInsert;
+        }
+
+        private bool PreAdd(T value, bool increase)
+        {
+            var node = new Node<T>(value);
+            if (head == null) AddInTail(node);
+            else if ((Compare(value, head.value) != 1 && increase) || (Compare(value, head.value) != -1 && !increase)) AddInHead(node);
+            else if ((Compare(value, tail.value) == 1 && increase) || (Compare(value, tail.value) == -1 && !increase)) AddInTail(node);
+            else return false;
+            return true;
+        }
+
+        private Node<T> GetAfterNodeAscending(T value)
+        {
+            var node = head;
+            while (node != null)
+            {
+                if (Compare(value, node.value) != 1) return node.prev;
+                node = node.next;
+            }
+            return null;
+        }
+
+        private Node<T> GetAfterNodeNotAscending(T value)
+        {
+            var node = head;
+            while (node != null)
+            {
+                if (Compare(value, node.value) != -1) return node.prev;
+                node = node.next;
+            }
+            return null;
         }
     }
 }
